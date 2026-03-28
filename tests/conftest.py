@@ -3,7 +3,7 @@
 import pytest
 
 TEST_API_KEY = "ss_test_abc123def456ghi789jkl012mno345pqr678stu901vwx"
-TEST_BASE_URL = "https://api.classifinder.tech"
+TEST_BASE_URL = "https://api.classifinder.ai"
 
 SCAN_RESPONSE_JSON = {
     "request_id": "req_a1b2c3d4e5f6",

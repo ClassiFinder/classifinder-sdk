@@ -16,7 +16,7 @@ from ._exceptions import (
     ClassiFinderError,
 )
 
-DEFAULT_BASE_URL = "https://api.classifinder.tech"
+DEFAULT_BASE_URL = "https://api.classifinder.ai"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 2
 

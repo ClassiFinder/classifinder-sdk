@@ -92,7 +92,11 @@ except ClassiFinderError as e:
 
 ## Documentation
 
-Full API documentation: [https://classifinder.tech](https://classifinder.tech)
+Full API documentation: [https://classifinder.ai](https://classifinder.ai)
+
+## Disclaimer
+
+ClassiFinder is a detection aid, not a guarantee. While we work to maintain accurate and comprehensive secret detection, no scanner catches 100% of secrets in 100% of formats. ClassiFinder should be used as one layer of a defense-in-depth security strategy, not as a sole safeguard. The service is provided "as-is" without warranty of any kind. See our [Terms of Service](https://classifinder.ai) for full details.
 
 ## License
 
