@@ -1,11 +1,6 @@
 # ClassiFinder
 
-Python SDK for the ClassiFinder secret detection API.
-
-Scan text for leaked secrets and credentials, get structured findings, and redact
-sensitive values -- all in a few lines of Python.
-
-## Installation
+Python SDK for the [ClassiFinder](https://classifinder.ai) secret detection API. Scan text for leaked secrets, get structured findings, and redact sensitive values — built for AI agents, LLM pipelines, and CI/CD.
 
 ```bash
 pip install classifinder
@@ -17,86 +12,167 @@ pip install classifinder
 from classifinder import ClassiFinder
 
 client = ClassiFinder(api_key="ss_live_...")
-# or set the CLASSIFINDER_API_KEY environment variable
+# or set CLASSIFINDER_API_KEY env var
 
-result = client.scan("My AWS key is AKIAIOSFODNN7EXAMPLE")
+result = client.scan("AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE")
 
 for finding in result.findings:
-    print(f"{finding.type_name} (severity={finding.severity}, confidence={finding.confidence})")
-    print(f"  Preview: {finding.value_preview}")
+    print(f"{finding.type_name}: {finding.value_preview} "
+          f"(severity={finding.severity}, confidence={finding.confidence})")
 ```
 
 ## Redact Secrets
 
-The `/v1/redact` endpoint replaces secrets in-place so you can safely pass text
-downstream to LLMs or logging systems.
+Strip secrets from text before forwarding to LLMs, logging systems, or downstream services.
 
 ```python
-result = client.redact("DB password is SuperSecret123!")
+result = client.redact("Deploy key: sk_live_51H7bKLkdFJH38djfh")
 
 print(result.redacted_text)
-# "DB password is [DATABASE_PASSWORD]!"
+# "Deploy key: [STRIPE_LIVE_SECRET_KEY_REDACTED]"
+```
 
-print(f"Redacted {result.findings_count} secret(s)")
+Three redaction styles:
+
+```python
+client.redact(text, redaction_style="label")  # [AWS_ACCESS_KEY_REDACTED]
+client.redact(text, redaction_style="mask")   # AKIA**************
+client.redact(text, redaction_style="hash")   # [REDACTED:sha256:a1b2c3d4]
 ```
 
 ## Async Support
 
+Full async client with the same API surface.
+
 ```python
 from classifinder import AsyncClassiFinder
 
-async def main():
-    client = AsyncClassiFinder(api_key="ss_live_...")
-    result = await client.scan("AKIA...")
-    await client.close()
+async def check_text():
+    async with AsyncClassiFinder(api_key="ss_live_...") as client:
+        result = await client.scan("check this config")
+        result = await client.redact("strip secrets from this")
 ```
+
+Both clients support context managers (`with` / `async with`) for automatic connection cleanup.
 
 ## LangChain Integration
 
-Guard your LLM chains against secret leakage.
+Guard your LLM chains against secret leakage with `ClassiFinderGuard` — a LangChain `Runnable` that slots into any chain.
 
 ```bash
 pip install classifinder[langchain]
 ```
 
+### Redact mode (default)
+
+Secrets are replaced with safe placeholders. The chain continues with clean text.
+
 ```python
 from classifinder.integrations.langchain import ClassiFinderGuard
 
-guard = ClassiFinderGuard(api_key="ss_live_...", mode="redact")
+guard = ClassiFinderGuard(api_key="ss_live_...")
 
-# Use as a standalone runnable
-clean_text = guard.invoke("My token is ghp_abc123secret")
+# Standalone
+clean = guard.invoke("My token is ghp_abc123secret")
+# "My token is [GITHUB_PAT_CLASSIC_REDACTED]"
 
-# Chain with other LangChain runnables
+# In a chain — secrets never reach the LLM
 chain = guard | your_llm | output_parser
+response = chain.invoke(user_input)
 ```
 
-Set `mode="block"` to raise `SecretsDetectedError` instead of redacting.
+### Block mode
+
+Raises `SecretsDetectedError` if any secrets are found — use when you want to reject input rather than clean it.
+
+```python
+from classifinder.integrations.langchain import ClassiFinderGuard
+from classifinder import SecretsDetectedError
+
+guard = ClassiFinderGuard(api_key="ss_live_...", mode="block")
+
+try:
+    guard.invoke("sk_live_51H7bKLkdFJH38djfh")
+except SecretsDetectedError as e:
+    print(f"Blocked: {e.findings_count} secret(s) detected")
+```
+
+### Fail-open by default
+
+If the ClassiFinder API is unreachable, the guard passes text through unmodified so your pipeline never breaks. Set `fail_open=False` to hard-fail instead.
+
+```python
+guard = ClassiFinderGuard(fail_open=False)  # raises on API errors
+```
+
+### Async chains
+
+Works with `ainvoke` for async LangChain pipelines:
+
+```python
+clean = await guard.ainvoke("check this async")
+```
+
+## All Client Methods
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `client.scan(text, ...)` | `POST /v1/scan` | Detect secrets, return findings |
+| `client.redact(text, ...)` | `POST /v1/redact` | Detect + replace secrets in text |
+| `client.get_types()` | `GET /v1/types` | List all 50 detectable secret types |
+| `client.health()` | `GET /v1/health` | Check API status |
+| `client.feedback(...)` | `POST /v1/feedback` | Report false positives/negatives |
+
+## Configuration
+
+```python
+client = ClassiFinder(
+    api_key="ss_live_...",           # or CLASSIFINDER_API_KEY env var
+    base_url="https://api.classifinder.ai",  # default
+    max_retries=2,                   # retries on 429/500/timeout
+    timeout=30.0,                    # seconds
+)
+```
+
+Built-in retry with exponential backoff on rate limits (429), server errors (500), and timeouts.
 
 ## Error Handling
 
 ```python
-from classifinder import ClassiFinder, AuthenticationError, RateLimitError, ClassiFinderError
-
-client = ClassiFinder(api_key="ss_live_...")
-
-try:
-    result = client.scan("check this text")
-except AuthenticationError:
-    print("Invalid API key")
-except RateLimitError as e:
-    print(f"Rate limited. Retry after {e.retry_after}s")
-except ClassiFinderError as e:
-    print(f"API error ({e.status_code}): {e.message}")
+from classifinder import (
+    ClassiFinder,
+    ClassiFinderError,       # base class for all errors
+    AuthenticationError,     # 401 — invalid API key
+    RateLimitError,          # 429 — retry after e.retry_after seconds
+    InvalidRequestError,     # 400 — bad request body
+    ForbiddenError,          # 403
+    ServerError,             # 500
+    APIConnectionError,      # network/timeout
+    SecretsDetectedError,    # raised by LangChain guard in block mode
+)
 ```
 
-## Documentation
+## What It Detects
 
-Full API documentation: [https://classifinder.ai](https://classifinder.ai)
+50 secret types across 7 categories: AWS, GCP, Azure, Stripe, GitHub, GitLab, Slack, Twilio, SendGrid, OpenAI, Anthropic, Cohere, database connection strings, SSH/PEM keys, JWTs, credit card numbers, and more.
+
+Full list: [`GET /v1/types`](https://api.classifinder.ai/docs#/default/list_types_v1_types_get)
+
+## Get an API Key
+
+Free tier: 60 requests/minute, 256 KB max payload.
+
+Get your key at [classifinder.ai](https://classifinder.ai).
+
+## Links
+
+- [API Documentation](https://api.classifinder.ai/docs)
+- [Open-source engine](https://github.com/ThomasParas/classifinder-engine) (MIT — audit the code that touches your data)
+- [MCP Server](https://pypi.org/project/classifinder-mcp/) for Claude Code / Cursor
 
 ## Disclaimer
 
-ClassiFinder is a detection aid, not a guarantee. While we work to maintain accurate and comprehensive secret detection, no scanner catches 100% of secrets in 100% of formats. ClassiFinder should be used as one layer of a defense-in-depth security strategy, not as a sole safeguard. The service is provided "as-is" without warranty of any kind. See our [Terms of Service](https://classifinder.ai) for full details.
+ClassiFinder is a detection aid, not a guarantee. No scanner catches 100% of secrets in 100% of formats. Use as one layer of a defense-in-depth security strategy. See our [Terms of Service](https://classifinder.ai/terms-of-service) for full details.
 
 ## License
 

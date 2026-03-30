@@ -12,10 +12,14 @@ except ImportError:
         "Install it with: pip install classifinder[langchain]"
     )
 
+import logging
+
 from .._client import ClassiFinder
 from .._async_client import AsyncClassiFinder
-from .._exceptions import SecretsDetectedError
+from .._exceptions import SecretsDetectedError, ClassiFinderError
 from .._models import ScanResult
+
+logger = logging.getLogger("classifinder.langchain")
 
 
 class ClassiFinderGuard(RunnableSerializable[str, str]):
@@ -24,6 +28,10 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
     In redact mode (default), secrets are replaced and the clean text is
     passed downstream. In block mode, an exception is raised if secrets
     are found.
+
+    If fail_open=True (default), API errors pass text through unmodified
+    so your pipeline never breaks because of ClassiFinder. Set fail_open=False
+    to hard-fail on API errors if you'd rather block than risk unscanned text.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -33,9 +41,10 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
     redaction_style: str = "label"
     types: List[str] = ["all"]
     min_confidence: float = 0.5
-    base_url: str = "https://api.classifinder.tech"
+    base_url: str = "https://api.classifinder.ai"
     max_retries: int = 2
     timeout: float = 30.0
+    fail_open: bool = True
 
     # Lazy-initialized clients (private attrs)
     _sync_client: Optional[ClassiFinder] = PrivateAttr(default=None)
@@ -74,53 +83,69 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
         text = self._coerce_input(input)
         client = self._get_sync_client()
 
-        if self.mode == "block":
-            result = client.scan(
-                text=text,
-                types=self.types,
-                min_confidence=self.min_confidence,
-            )
-            if result.findings_count > 0:
-                raise SecretsDetectedError(
-                    message=f"Found {result.findings_count} secret(s) in input text.",
-                    findings_count=result.findings_count,
-                    findings=result.findings,
-                    summary=result.summary,
+        try:
+            if self.mode == "block":
+                result = client.scan(
+                    text=text,
+                    types=self.types,
+                    min_confidence=self.min_confidence,
                 )
-            return text
-        else:
-            result = client.redact(
-                text=text,
-                types=self.types,
-                min_confidence=self.min_confidence,
-                redaction_style=self.redaction_style,
-            )
-            return result.redacted_text
+                if result.findings_count > 0:
+                    raise SecretsDetectedError(
+                        message=f"Found {result.findings_count} secret(s) in input text.",
+                        findings_count=result.findings_count,
+                        findings=result.findings,
+                        summary=result.summary,
+                    )
+                return text
+            else:
+                result = client.redact(
+                    text=text,
+                    types=self.types,
+                    min_confidence=self.min_confidence,
+                    redaction_style=self.redaction_style,
+                )
+                return result.redacted_text
+        except SecretsDetectedError:
+            raise  # Always propagate — this is intentional blocking
+        except ClassiFinderError as exc:
+            if self.fail_open:
+                logger.warning("ClassiFinder API error, passing text through: %s", exc)
+                return text
+            raise
 
     async def ainvoke(self, input: Any, config: Any = None, **kwargs) -> str:
         """Async: scan/redact text and return result."""
         text = self._coerce_input(input)
         client = self._get_async_client()
 
-        if self.mode == "block":
-            result = await client.scan(
-                text=text,
-                types=self.types,
-                min_confidence=self.min_confidence,
-            )
-            if result.findings_count > 0:
-                raise SecretsDetectedError(
-                    message=f"Found {result.findings_count} secret(s) in input text.",
-                    findings_count=result.findings_count,
-                    findings=result.findings,
-                    summary=result.summary,
+        try:
+            if self.mode == "block":
+                result = await client.scan(
+                    text=text,
+                    types=self.types,
+                    min_confidence=self.min_confidence,
                 )
-            return text
-        else:
-            result = await client.redact(
-                text=text,
-                types=self.types,
-                min_confidence=self.min_confidence,
-                redaction_style=self.redaction_style,
-            )
-            return result.redacted_text
+                if result.findings_count > 0:
+                    raise SecretsDetectedError(
+                        message=f"Found {result.findings_count} secret(s) in input text.",
+                        findings_count=result.findings_count,
+                        findings=result.findings,
+                        summary=result.summary,
+                    )
+                return text
+            else:
+                result = await client.redact(
+                    text=text,
+                    types=self.types,
+                    min_confidence=self.min_confidence,
+                    redaction_style=self.redaction_style,
+                )
+                return result.redacted_text
+        except SecretsDetectedError:
+            raise  # Always propagate — this is intentional blocking
+        except ClassiFinderError as exc:
+            if self.fail_open:
+                logger.warning("ClassiFinder API error, passing text through: %s", exc)
+                return text
+            raise
