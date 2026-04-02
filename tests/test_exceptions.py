@@ -84,7 +84,6 @@ class TestExceptionHierarchy:
         assert e.status_code is None
 
 
-
 class TestErrorMapping:
     @respx.mock
     def test_401_raises_authentication_error(self):
@@ -92,9 +91,7 @@ class TestErrorMapping:
             return_value=httpx.Response(401, json=ERROR_401_JSON)
         )
         with (
-            ClassiFinder(
-                api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0
-            ) as client,
+            ClassiFinder(api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0) as client,
             pytest.raises(AuthenticationError, match="Missing"),
         ):
             client.scan("text")
@@ -105,9 +102,7 @@ class TestErrorMapping:
             return_value=httpx.Response(400, json=ERROR_400_JSON)
         )
         with (
-            ClassiFinder(
-                api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0
-            ) as client,
+            ClassiFinder(api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0) as client,
             pytest.raises(InvalidRequestError) as exc_info,
         ):
             client.scan("text")
@@ -119,9 +114,7 @@ class TestErrorMapping:
             return_value=httpx.Response(403, json=ERROR_403_JSON)
         )
         with (
-            ClassiFinder(
-                api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0
-            ) as client,
+            ClassiFinder(api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0) as client,
             pytest.raises(ForbiddenError) as exc_info,
         ):
             client.scan("text")
@@ -133,9 +126,7 @@ class TestErrorMapping:
             return_value=httpx.Response(429, json=ERROR_429_JSON)
         )
         with (
-            ClassiFinder(
-                api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0
-            ) as client,
+            ClassiFinder(api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0) as client,
             pytest.raises(RateLimitError) as exc_info,
         ):
             client.scan("text")
@@ -147,9 +138,7 @@ class TestErrorMapping:
             return_value=httpx.Response(500, json=ERROR_500_JSON)
         )
         with (
-            ClassiFinder(
-                api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0
-            ) as client,
+            ClassiFinder(api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0) as client,
             pytest.raises(ServerError, match="unexpected"),
         ):
             client.scan("text")

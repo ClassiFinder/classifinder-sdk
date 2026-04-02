@@ -169,9 +169,7 @@ class TestFailOpen:
     @respx.mock
     def test_fail_open_on_network_error(self):
         """Network errors should also pass through when fail_open=True."""
-        respx.post(f"{TEST_BASE_URL}/v1/redact").mock(
-            side_effect=httpx.ConnectError("refused")
-        )
+        respx.post(f"{TEST_BASE_URL}/v1/redact").mock(side_effect=httpx.ConnectError("refused"))
         guard = ClassiFinderGuard(
             api_key=TEST_API_KEY, base_url=TEST_BASE_URL, mode="redact", max_retries=0
         )

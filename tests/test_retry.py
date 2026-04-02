@@ -124,9 +124,7 @@ class TestRetry:
 
     @respx.mock
     def test_network_timeout_raises_api_connection_error(self):
-        respx.post(f"{TEST_BASE_URL}/v1/scan").mock(
-            side_effect=httpx.ConnectError("refused")
-        )
+        respx.post(f"{TEST_BASE_URL}/v1/scan").mock(side_effect=httpx.ConnectError("refused"))
         with (
             ClassiFinder(api_key=TEST_API_KEY, base_url=TEST_BASE_URL, max_retries=0) as client,
             pytest.raises(APIConnectionError),

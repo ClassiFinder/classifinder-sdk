@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import os
 import time
+from typing import TYPE_CHECKING
 
-import httpx
+if TYPE_CHECKING:
+    import httpx
 
 from ._exceptions import (
     APIConnectionError,
