@@ -119,7 +119,7 @@ clean = await guard.ainvoke("check this async")
 |--------|----------|-------------|
 | `client.scan(text, ...)` | `POST /v1/scan` | Detect secrets, return findings |
 | `client.redact(text, ...)` | `POST /v1/redact` | Detect + replace secrets in text |
-| `client.get_types()` | `GET /v1/types` | List all 71 detectable secret types |
+| `client.get_types()` | `GET /v1/types` | List all 82 detectable secret types |
 | `client.health()` | `GET /v1/health` | Check API status |
 | `client.feedback(...)` | `POST /v1/feedback` | Report false positives/negatives |
 
@@ -154,7 +154,7 @@ from classifinder import (
 
 ## What It Detects
 
-71 secret types across 7 categories: AWS, GCP, Azure, Stripe, GitHub, GitLab, Slack, Twilio, SendGrid, OpenAI, Anthropic, Cohere, database connection strings, SSH/PEM keys, JWTs, credit card numbers, and more.
+82 secret types across 7 categories: AWS, GCP, Azure, Stripe, GitHub, GitLab, Slack, Twilio, SendGrid, OpenAI, Anthropic, Cohere, database connection strings, SSH/PEM keys, JWTs, credit card numbers, and more.
 
 Full list: [`GET /v1/types`](https://api.classifinder.ai/docs#/default/list_types_v1_types_get)
 
