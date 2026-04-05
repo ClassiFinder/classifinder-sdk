@@ -75,37 +75,37 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
         if isinstance(input, str):
             return input
         if hasattr(input, "to_string"):
-            return input.to_string()
+            return str(input.to_string())
         return str(input)
 
-    def invoke(self, input: Any, config: Any = None, **kwargs) -> str:
+    def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> str:
         """Sync: scan/redact text and return result."""
         text = self._coerce_input(input)
         client = self._get_sync_client()
 
         try:
             if self.mode == "block":
-                result = client.scan(
+                scan_result = client.scan(
                     text=text,
                     types=self.types,
                     min_confidence=self.min_confidence,
                 )
-                if result.findings_count > 0:
+                if scan_result.findings_count > 0:
                     raise SecretsDetectedError(
-                        message=f"Found {result.findings_count} secret(s) in input text.",
-                        findings_count=result.findings_count,
-                        findings=result.findings,
-                        summary=result.summary,
+                        message=f"Found {scan_result.findings_count} secret(s) in input text.",
+                        findings_count=scan_result.findings_count,
+                        findings=scan_result.findings,
+                        summary=scan_result.summary,
                     )
                 return text
             else:
-                result = client.redact(
+                redact_result = client.redact(
                     text=text,
                     types=self.types,
                     min_confidence=self.min_confidence,
                     redaction_style=self.redaction_style,
                 )
-                return result.redacted_text
+                return redact_result.redacted_text
         except SecretsDetectedError:
             raise  # Always propagate — this is intentional blocking
         except ClassiFinderError as exc:
@@ -114,34 +114,34 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
                 return text
             raise
 
-    async def ainvoke(self, input: Any, config: Any = None, **kwargs) -> str:
+    async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> str:
         """Async: scan/redact text and return result."""
         text = self._coerce_input(input)
         client = self._get_async_client()
 
         try:
             if self.mode == "block":
-                result = await client.scan(
+                scan_result = await client.scan(
                     text=text,
                     types=self.types,
                     min_confidence=self.min_confidence,
                 )
-                if result.findings_count > 0:
+                if scan_result.findings_count > 0:
                     raise SecretsDetectedError(
-                        message=f"Found {result.findings_count} secret(s) in input text.",
-                        findings_count=result.findings_count,
-                        findings=result.findings,
-                        summary=result.summary,
+                        message=f"Found {scan_result.findings_count} secret(s) in input text.",
+                        findings_count=scan_result.findings_count,
+                        findings=scan_result.findings,
+                        summary=scan_result.summary,
                     )
                 return text
             else:
-                result = await client.redact(
+                redact_result = await client.redact(
                     text=text,
                     types=self.types,
                     min_confidence=self.min_confidence,
                     redaction_style=self.redaction_style,
                 )
-                return result.redacted_text
+                return redact_result.redacted_text
         except SecretsDetectedError:
             raise  # Always propagate — this is intentional blocking
         except ClassiFinderError as exc:

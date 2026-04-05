@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import httpx
 
 from ._base import (
@@ -49,10 +51,10 @@ class AsyncClassiFinder:
     async def __aenter__(self) -> AsyncClassiFinder:
         return self
 
-    async def __aexit__(self, *args) -> None:
+    async def __aexit__(self, *args: object) -> None:
         await self.close()
 
-    async def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
+    async def _request(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         """Make an HTTP request with retry logic."""
         url = f"{self._base_url}{path}"
         last_exc: Exception | None = None
@@ -74,6 +76,7 @@ class AsyncClassiFinder:
                     raise
                 await async_sleep_for_retry(attempt, exc)
 
+        assert last_exc is not None  # pragma: no cover
         raise last_exc  # pragma: no cover
 
     async def scan(
