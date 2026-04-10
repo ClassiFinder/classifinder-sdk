@@ -5,7 +5,7 @@ Thanks for your interest in contributing! This is the official Python SDK for th
 ## Getting Started
 
 ```bash
-git clone https://github.com/ThomasParas/classifinder-python.git
+git clone https://github.com/classifinder/classifinder-sdk.git
 cd classifinder-python
 pip install -e ".[dev]"
 python -m pytest tests/ -v
@@ -17,7 +17,7 @@ Requires Python 3.10+.
 
 ### Bug Reports
 
-[Open an issue](https://github.com/ThomasParas/classifinder-python/issues) with:
+[Open an issue](https://github.com/classifinder/classifinder-sdk/issues) with:
 
 - SDK version (`pip show classifinder`)
 - Python version
