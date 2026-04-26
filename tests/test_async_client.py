@@ -26,6 +26,44 @@ class TestAsyncConstruction:
         async with AsyncClassiFinder(api_key=TEST_API_KEY) as client:
             assert client._api_key == TEST_API_KEY
 
+    async def test_http2_default_false_preserves_existing_behavior(self):
+        """Default http2=False — h2 must not be negotiated unless caller opts in."""
+        client = AsyncClassiFinder(api_key=TEST_API_KEY)
+        assert client._client._transport._pool._http2 is False
+        await client.close()
+
+    async def test_http2_true_enables_negotiation(self):
+        """http2=True propagates to the underlying httpx.AsyncClient."""
+        client = AsyncClassiFinder(api_key=TEST_API_KEY, http2=True)
+        assert client._client._transport._pool._http2 is True
+        await client.close()
+
+    async def test_custom_limits_pass_through(self):
+        """A user-supplied httpx.Limits is honored (not silently overridden)."""
+        custom = httpx.Limits(max_connections=50, max_keepalive_connections=20)
+        client = AsyncClassiFinder(api_key=TEST_API_KEY, limits=custom)
+        assert client._client._transport._pool._max_connections == 50
+        assert client._client._transport._pool._max_keepalive_connections == 20
+        await client.close()
+
+    async def test_default_limits_when_none_supplied(self):
+        """Omitting limits= uses httpx defaults — does not raise."""
+        client = AsyncClassiFinder(api_key=TEST_API_KEY)
+        assert client._client._transport._pool is not None
+        await client.close()
+
+    @respx.mock
+    async def test_http2_enabled_request_round_trip(self):
+        """End-to-end: http2=True doesn't break the request path under respx mock."""
+        respx.post(f"{TEST_BASE_URL}/v1/scan").mock(
+            return_value=httpx.Response(200, json=SCAN_RESPONSE_JSON)
+        )
+        async with AsyncClassiFinder(
+            api_key=TEST_API_KEY, base_url=TEST_BASE_URL, http2=True
+        ) as client:
+            result = await client.scan("any text")
+        assert result.findings_count == 1
+
 
 class TestAsyncScan:
     @respx.mock

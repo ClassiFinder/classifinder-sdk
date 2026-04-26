@@ -39,6 +39,46 @@ class TestClientConstruction:
         with ClassiFinder(api_key=TEST_API_KEY) as client:
             assert client._api_key == TEST_API_KEY
 
+    def test_http2_default_false_preserves_existing_behavior(self):
+        """Default http2=False — h2 must not be negotiated unless caller opts in."""
+        client = ClassiFinder(api_key=TEST_API_KEY)
+        # Path is httpx-version-specific (probed against httpx 0.28+).
+        # If a future httpx changes _transport._pool layout this will fail loudly.
+        assert client._client._transport._pool._http2 is False
+        client.close()
+
+    def test_http2_true_enables_negotiation(self):
+        """http2=True propagates to the underlying httpx.Client."""
+        client = ClassiFinder(api_key=TEST_API_KEY, http2=True)
+        assert client._client._transport._pool._http2 is True
+        client.close()
+
+    def test_custom_limits_pass_through(self):
+        """A user-supplied httpx.Limits is honored (not silently overridden)."""
+        custom = httpx.Limits(max_connections=50, max_keepalive_connections=20)
+        client = ClassiFinder(api_key=TEST_API_KEY, limits=custom)
+        assert client._client._transport._pool._max_connections == 50
+        assert client._client._transport._pool._max_keepalive_connections == 20
+        client.close()
+
+    def test_default_limits_when_none_supplied(self):
+        """Omitting limits= uses httpx defaults — does not raise."""
+        client = ClassiFinder(api_key=TEST_API_KEY)
+        # Don't assert specific values (httpx defaults can change across versions),
+        # just confirm the pool exists and construction succeeded.
+        assert client._client._transport._pool is not None
+        client.close()
+
+    @respx.mock
+    def test_http2_enabled_request_round_trip(self):
+        """End-to-end: http2=True doesn't break the request path under respx mock."""
+        respx.post(f"{TEST_BASE_URL}/v1/scan").mock(
+            return_value=httpx.Response(200, json=SCAN_RESPONSE_JSON)
+        )
+        with ClassiFinder(api_key=TEST_API_KEY, base_url=TEST_BASE_URL, http2=True) as client:
+            result = client.scan("any text")
+        assert result.findings_count == 1
+
 
 class TestScan:
     @respx.mock

@@ -35,13 +35,26 @@ class ClassiFinder:
         base_url: str = DEFAULT_BASE_URL,
         max_retries: int = DEFAULT_MAX_RETRIES,
         timeout: float = DEFAULT_TIMEOUT,
+        http2: bool = False,
+        limits: httpx.Limits | None = None,
     ) -> None:
+        """Construct a synchronous ClassiFinder client.
+
+        http2: enable HTTP/2 negotiation. Defaults to False to preserve the
+            existing wire behavior for callers who don't opt in. Setting
+            http2=True requires the [http2] extra (httpx pulls h2 from there).
+        limits: pass-through to httpx.Client(limits=). Useful for tuning the
+            connection pool when fanning out many concurrent requests
+            (e.g., from a CLI like cfsniff). Default leaves httpx's defaults.
+        """
         self._api_key = resolve_api_key(api_key)
         self._base_url = base_url.rstrip("/")
         self._max_retries = max_retries
         self._client = httpx.Client(
             headers=build_headers(self._api_key),
             timeout=timeout,
+            http2=http2,
+            limits=limits if limits is not None else httpx.Limits(),
         )
 
     def close(self) -> None:
