@@ -113,6 +113,58 @@ Works with `ainvoke` for async LangChain pipelines:
 clean = await guard.ainvoke("check this async")
 ```
 
+## FastAPI Middleware
+
+Scan every request body before it reaches a route handler. One middleware addition, zero changes to business logic — and any route added later is automatically covered. Calling `await request.body()` in middleware is safe; FastAPI caches the body so the downstream handler still sees it.
+
+```python
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from classifinder import AsyncClassiFinder
+
+app = FastAPI()
+cf = AsyncClassiFinder()  # reads CLASSIFINDER_API_KEY from env
+
+@app.middleware("http")
+async def scan_for_secrets(request: Request, call_next):
+    body = await request.body()
+    if body:
+        result = await cf.scan(body.decode("utf-8", errors="ignore"))
+        if any(f.severity in ("critical", "high") for f in result.findings):
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Sensitive data detected in request body"},
+            )
+    return await call_next(request)
+```
+
+Return a `JSONResponse` to block — `raise HTTPException(...)` doesn't convert to a response inside `@app.middleware("http")`.
+
+## RAG Pre-Index Hook
+
+Scan documents *before* they enter a vector store. Once a secret is embedded, it becomes queryable by intent — *"What are the production database credentials?"* is a valid RAG query against your own corpus, and your own model will retrieve them. Redacting at index time is the only place to fix this.
+
+```python
+from classifinder import ClassiFinder
+from llama_index.core import VectorStoreIndex, Document
+
+cf = ClassiFinder()  # reads CLASSIFINDER_API_KEY from env
+
+def redact(docs: list[Document]) -> list[Document]:
+    for doc in docs:
+        result = cf.redact(doc.text)
+        if result.findings_count:
+            doc.text = result.redacted_text
+            doc.metadata["secrets_redacted"] = result.findings_count
+    return docs
+
+index = VectorStoreIndex.from_documents(redact(load_docs()))
+```
+
+The same pattern applies to LangChain document loaders, Pinecone upserts, and Chroma `add_documents()` — call `cf.redact()` (or `cf.scan()` if you want to refuse rather than redact) on each document's text before indexing.
+
+See the full integration guide with three real-world projects per pattern: [classifinder.ai/integrations](https://classifinder.ai/integrations).
+
 ## All Client Methods
 
 | Method | Endpoint | Description |
