@@ -34,6 +34,7 @@ class Finding(_Base):
     is_likely_test_value: bool
     recommendation: str
     matched_pattern: str
+    safe_mcp_ids: list[str] = []
 
 
 class RedactFinding(_Base):

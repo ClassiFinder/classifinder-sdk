@@ -43,6 +43,28 @@ class TestScanResult:
         result = ScanResult.model_validate(data)
         assert result.request_id == "req_a1b2c3d4e5f6"
 
+    def test_safe_mcp_ids_default_empty(self):
+        # AWS secret finding — no SAFE-T mapping; field must default to empty list.
+        result = ScanResult.model_validate(SCAN_RESPONSE_JSON)
+        assert result.findings[0].safe_mcp_ids == []
+
+    def test_safe_mcp_ids_deserializes(self):
+        # Prompt-injection finding with SAFE-T mapping populated.
+        pi_response = {
+            **SCAN_RESPONSE_JSON,
+            "findings": [
+                {
+                    **SCAN_RESPONSE_JSON["findings"][0],
+                    "type": "pi_role_hijack_marker",
+                    "provider": "prompt_injection",
+                    "matched_pattern": "pi_role_hijack_marker_v1",
+                    "safe_mcp_ids": ["SAFE-T1001", "SAFE-T1102"],
+                }
+            ],
+        }
+        result = ScanResult.model_validate(pi_response)
+        assert result.findings[0].safe_mcp_ids == ["SAFE-T1001", "SAFE-T1102"]
+
 
 class TestRedactResult:
     def test_parse_from_json(self):
