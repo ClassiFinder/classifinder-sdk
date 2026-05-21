@@ -171,7 +171,7 @@ See the full integration guide with three real-world projects per pattern: [clas
 |--------|----------|-------------|
 | `client.scan(text, ...)` | `POST /v1/scan` | Detect secrets, return findings |
 | `client.redact(text, ...)` | `POST /v1/redact` | Detect + replace secrets in text |
-| `client.get_types()` | `GET /v1/types` | List all 106 detectable secret types |
+| `client.get_types()` | `GET /v1/types` | List all 164 detectable secret types |
 | `client.health()` | `GET /v1/health` | Check API status |
 | `client.feedback(...)` | `POST /v1/feedback` | Report false positives/negatives |
 
@@ -230,9 +230,9 @@ from classifinder import (
 
 ## What It Detects
 
-**106 secret types** across 7 categories: AWS, GCP, Azure, Vercel, Fly.io, Doppler, Vault and other cloud/infra; Stripe, PayPal, Shopify, credit cards (Luhn-validated); GitHub, GitLab, Bitbucket, npm, PyPI, RubyGems; Slack, Twilio, SendGrid, Datadog, Sentry, PagerDuty, Notion, Linear; PostgreSQL/MySQL/MongoDB/Redis/Supabase connection strings; SSH/PEM private keys; JWTs; and **18 AI/LLM provider keys** (OpenAI, Anthropic user + admin, Cohere, xAI, Mistral, DeepSeek, HuggingFace, Replicate, Groq, ElevenLabs, AssemblyAI, Deepgram, LangFuse, AWS Bedrock long + short-lived, Vercel AI Gateway, Weights & Biases).
+**164 secret types** across 10 categories: cloud/infra (AWS, GCP, Azure, Vercel with the 2024+ prefixed taxonomy vcp_/vci_/vca_/vcr_/vck_, Fly.io, Doppler, Vault, Cloudflare, Dropbox, JFrog/Artifactory and more); payment (Stripe, PayPal, Shopify with 4 token types, credit cards Luhn-validated, Square); VCS (GitHub, GitLab with 10 token types including deploy/feed/runner/SCIM/k8s-agent/OAuth/feature-flag, Bitbucket, npm, PyPI, RubyGems); comms (Slack with config/session/legacy variants, Twilio, SendGrid, Mailgun, Datadog, Sentry, PagerDuty, Notion, Linear and more); database connection strings (PostgreSQL/MySQL/MongoDB/Redis/Supabase); generic SSH/PEM private keys and JWTs; **AI/LLM provider keys** (OpenAI, Anthropic user + admin, Cohere, xAI, Mistral, DeepSeek, HuggingFace user + organization, Replicate, Groq, ElevenLabs, AssemblyAI, Deepgram, LangFuse, AWS Bedrock long + short-lived, Vercel AI Gateway, Weights & Biases); DevOps/observability (Databricks, Dynatrace, LaunchDarkly, Harness, Octopus Deploy, Fastly, Gitea, TravisCI, Prefect, Infracost, Sumo Logic, Snyk, Sonar, Sourcegraph); data/analytics (ClickHouse, PlanetScale with 3 token types, PostHog, Postman, Algolia, Contentful); enterprise identity (Atlassian, 1Password, HubSpot, Mapbox, MaxMind, Zendesk).
 
-**10 prompt-injection markers** — 4 phase-1 high-precision + 6 phase-2 medium-precision:
+**14 prompt-injection markers** — 4 phase-1 high-precision + 6 phase-2 medium-precision + 4 phase-3 SAFE-MCP-derived:
 
 - **Phase 1** (structurally rare tokens, high confidence): role-hijack control tokens (ChatML / Llama / Alpaca), tool-call tag injection (`<tool_use>`, `<function_call>`, `<thinking>`), known jailbreak personas (DAN, AIM, developer mode), Unicode bidirectional override (Trojan Source / CVE-2021-42574).
 - **Phase 2** (natural-language markers): zero-width Unicode smuggling, fake assistant turn (`Assistant:`, `Claude:`, `GPT:` prefixes), prompt extraction (`reveal your system prompt`), instruction override (`ignore previous instructions`), persona override (`act as…` — context-gated, opt-in via `min_confidence=0.4`), encoded payload markers (base64 + decode hint).
