@@ -171,7 +171,7 @@ See the full integration guide with three real-world projects per pattern: [clas
 |--------|----------|-------------|
 | `client.scan(text, ...)` | `POST /v1/scan` | Detect secrets, return findings |
 | `client.redact(text, ...)` | `POST /v1/redact` | Detect + replace secrets in text |
-| `client.get_types()` | `GET /v1/types` | List all 164 detectable secret types |
+| `client.get_types()` | `GET /v1/types` | List all 165 detectable secret types |
 | `client.health()` | `GET /v1/health` | Check API status |
 | `client.feedback(...)` | `POST /v1/feedback` | Report false positives/negatives |
 
@@ -230,7 +230,7 @@ from classifinder import (
 
 ## What It Detects
 
-**164 secret types** across 10 categories: cloud/infra (AWS, GCP, Azure, Vercel with the 2024+ prefixed taxonomy vcp_/vci_/vca_/vcr_/vck_, Fly.io, Doppler, Vault, Cloudflare, Dropbox, JFrog/Artifactory and more); payment (Stripe, PayPal, Shopify with 4 token types, credit cards Luhn-validated, Square); VCS (GitHub, GitLab with 10 token types including deploy/feed/runner/SCIM/k8s-agent/OAuth/feature-flag, Bitbucket, npm, PyPI, RubyGems); comms (Slack with config/session/legacy variants, Twilio, SendGrid, Mailgun, Datadog, Sentry, PagerDuty, Notion, Linear and more); database connection strings (PostgreSQL/MySQL/MongoDB/Redis/Supabase); generic SSH/PEM private keys and JWTs; **AI/LLM provider keys** (OpenAI, Anthropic user + admin, Cohere, xAI, Mistral, DeepSeek, HuggingFace user + organization, Replicate, Groq, ElevenLabs, AssemblyAI, Deepgram, LangFuse, AWS Bedrock long + short-lived, Vercel AI Gateway, Weights & Biases); DevOps/observability (Databricks, Dynatrace, LaunchDarkly, Harness, Octopus Deploy, Fastly, Gitea, TravisCI, Prefect, Infracost, Sumo Logic, Snyk, Sonar, Sourcegraph); data/analytics (ClickHouse, PlanetScale with 3 token types, PostHog, Postman, Algolia, Contentful); enterprise identity (Atlassian, 1Password, HubSpot, Mapbox, MaxMind, Zendesk).
+**165 secret types** across 10 categories: cloud/infra (AWS, GCP, Azure, Vercel with the 2024+ prefixed taxonomy vcp_/vci_/vca_/vcr_/vck_, Fly.io, Doppler, Vault, Cloudflare, Dropbox, JFrog/Artifactory and more); payment (Stripe, PayPal, Shopify with 4 token types, credit cards Luhn-validated, Square); VCS (GitHub, GitLab with 10 token types including deploy/feed/runner/SCIM/k8s-agent/OAuth/feature-flag, Bitbucket, npm, PyPI, RubyGems); comms (Slack with config/session/legacy variants, Twilio, SendGrid, Mailgun, Datadog, Sentry, PagerDuty, Notion, Linear and more); database connection strings (PostgreSQL/MySQL/MongoDB/Redis/Supabase); generic SSH/PEM private keys and JWTs; **AI/LLM provider keys** (OpenAI, Anthropic user + admin, Cohere, xAI, Mistral, DeepSeek, HuggingFace user + organization, Replicate, Groq, ElevenLabs, AssemblyAI, Deepgram, LangFuse, AWS Bedrock long + short-lived, Vercel AI Gateway, Weights & Biases); DevOps/observability (Databricks, Dynatrace, LaunchDarkly, Harness, Octopus Deploy, Fastly, Gitea, TravisCI, Prefect, Infracost, Sumo Logic, Snyk, Sonar, Sourcegraph); data/analytics (ClickHouse, PlanetScale with 3 token types, PostHog, Postman, Algolia, Contentful); enterprise identity (Atlassian, 1Password, HubSpot, Mapbox, MaxMind, Zendesk).
 
 **14 prompt-injection markers** — 4 phase-1 high-precision + 6 phase-2 medium-precision + 4 phase-3 SAFE-MCP-derived:
 
