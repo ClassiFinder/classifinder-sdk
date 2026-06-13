@@ -11,6 +11,7 @@ from classifinder._exceptions import (
     ClassiFinderError,
     ForbiddenError,
     InvalidRequestError,
+    PromptInjectionDetectedError,
     RateLimitError,
     SecretsDetectedError,
     ServerError,
@@ -24,6 +25,21 @@ from conftest import (
     TEST_API_KEY,
     TEST_BASE_URL,
 )
+
+
+def test_prompt_injection_detected_error_shape():
+    """PromptInjectionDetectedError is a ClassiFinderError carrying markers + findings."""
+    findings = [{"type": "pi_tool_call_injection"}]
+    err = PromptInjectionDetectedError(
+        message="injection detected",
+        markers=["pi_tool_call_injection"],
+        findings=findings,
+    )
+    assert isinstance(err, ClassiFinderError)
+    assert err.markers == ["pi_tool_call_injection"]
+    assert err.findings == findings
+    assert err.status_code is None
+    assert str(err) == "injection detected"
 
 
 class TestExceptionHierarchy:

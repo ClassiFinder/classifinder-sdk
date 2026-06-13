@@ -17,9 +17,36 @@ except ImportError as _err:
 
 from .._async_client import AsyncClassiFinder
 from .._client import ClassiFinder
-from .._exceptions import ClassiFinderError, SecretsDetectedError
+from .._exceptions import (
+    ClassiFinderError,
+    PromptInjectionDetectedError,
+    SecretsDetectedError,
+)
 
 logger = logging.getLogger("classifinder.langchain")
+
+# Prompt-injection markers follow the ``pi_*`` type-id convention. Redact
+# responses expose ``type`` but not ``provider``, so detection keys off type.
+_PI_TYPE_PREFIX = "pi_"
+
+
+def _injection_markers(findings: Any, injection_types: list[str] | None) -> list[str]:
+    """Return the prompt-injection type ids present in ``findings``.
+
+    If ``injection_types`` is given, only those exact type ids count (e.g. the
+    four phase-1 high-precision markers). Otherwise any ``pi_*`` type counts.
+    """
+    out: list[str] = []
+    for f in findings:
+        ftype = getattr(f, "type", None)
+        if ftype is None:
+            continue
+        if injection_types is not None:
+            if ftype in injection_types:
+                out.append(ftype)
+        elif ftype.startswith(_PI_TYPE_PREFIX):
+            out.append(ftype)
+    return out
 
 
 class ClassiFinderGuard(RunnableSerializable[str, str]):
@@ -45,6 +72,16 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
     max_retries: int = 2
     timeout: float = 30.0
     fail_open: bool = True
+
+    # Prompt-injection handling (redact mode). When block_on_injection=True, a
+    # prompt-injection marker in the input raises PromptInjectionDetectedError
+    # instead of returning redacted text — secrets are still redacted, but an
+    # injection attempt is refused outright. injection_types optionally scopes
+    # which marker type ids trigger the refusal (e.g. the phase-1 high-precision
+    # set); None means any pi_* marker. A detected injection always raises,
+    # regardless of fail_open (same contract as SecretsDetectedError).
+    block_on_injection: bool = False
+    injection_types: list[str] | None = None
 
     # Lazy-initialized clients (private attrs)
     _sync_client: ClassiFinder | None = PrivateAttr(default=None)
@@ -105,8 +142,18 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
                     min_confidence=self.min_confidence,
                     redaction_style=self.redaction_style,
                 )
+                if self.block_on_injection:
+                    markers = _injection_markers(
+                        redact_result.findings, self.injection_types
+                    )
+                    if markers:
+                        raise PromptInjectionDetectedError(
+                            message=f"Prompt-injection marker(s) detected: {', '.join(markers)}.",
+                            markers=markers,
+                            findings=redact_result.findings,
+                        )
                 return redact_result.redacted_text
-        except SecretsDetectedError:
+        except (SecretsDetectedError, PromptInjectionDetectedError):
             raise  # Always propagate — this is intentional blocking
         except ClassiFinderError as exc:
             if self.fail_open:
@@ -141,8 +188,18 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
                     min_confidence=self.min_confidence,
                     redaction_style=self.redaction_style,
                 )
+                if self.block_on_injection:
+                    markers = _injection_markers(
+                        redact_result.findings, self.injection_types
+                    )
+                    if markers:
+                        raise PromptInjectionDetectedError(
+                            message=f"Prompt-injection marker(s) detected: {', '.join(markers)}.",
+                            markers=markers,
+                            findings=redact_result.findings,
+                        )
                 return redact_result.redacted_text
-        except SecretsDetectedError:
+        except (SecretsDetectedError, PromptInjectionDetectedError):
             raise  # Always propagate — this is intentional blocking
         except ClassiFinderError as exc:
             if self.fail_open:
