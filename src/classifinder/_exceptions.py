@@ -67,3 +67,18 @@ class SecretsDetectedError(ClassiFinderError):
         self.findings = findings
         self.summary = summary
         super().__init__(message, status_code=None)
+
+
+class PromptInjectionDetectedError(ClassiFinderError):
+    """Raised by ClassiFinderGuard when a prompt-injection marker is found and
+    ``block_on_injection`` is enabled.
+
+    ``markers`` is the list of prompt-injection type ids that fired (e.g.
+    ``["pi_tool_call_injection"]``); ``findings`` carries the underlying
+    finding objects for inspection / logging.
+    """
+
+    def __init__(self, message: str, markers: Any, findings: Any) -> None:
+        self.markers = markers
+        self.findings = findings
+        super().__init__(message, status_code=None)

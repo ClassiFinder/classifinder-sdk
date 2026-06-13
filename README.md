@@ -97,6 +97,39 @@ except SecretsDetectedError as e:
     print(f"Blocked: {e.findings_count} secret(s) detected")
 ```
 
+### Refuse on prompt injection
+
+Set `block_on_injection=True` to redact secrets **and** refuse prompt-injection
+attempts in one call. Secrets are still stripped; an injection marker raises
+`PromptInjectionDetectedError` so you can reject the input instead of feeding it
+to the model. Scope which markers refuse with `injection_types` (omit it to
+refuse on any `pi_*` marker):
+
+```python
+from classifinder.integrations.langchain import ClassiFinderGuard
+from classifinder import PromptInjectionDetectedError
+
+# Refuse only on the four high-precision (phase-1) markers; redact secrets otherwise.
+guard = ClassiFinderGuard(
+    api_key="ss_live_...",
+    mode="redact",
+    block_on_injection=True,
+    injection_types=[
+        "pi_role_hijack_marker",
+        "pi_tool_call_injection",
+        "pi_jailbreak_persona",
+        "pi_bidi_override",
+    ],
+)
+
+try:
+    clean = guard.invoke(user_input)   # secrets redacted; safe to send to the LLM
+except PromptInjectionDetectedError as e:
+    refuse(f"Injection markers: {', '.join(e.markers)}")
+```
+
+A detected injection always raises, regardless of `fail_open`.
+
 ### Fail-open by default
 
 If the ClassiFinder API is unreachable, the guard passes text through unmodified so your pipeline never breaks. Set `fail_open=False` to hard-fail instead.
@@ -225,6 +258,7 @@ from classifinder import (
     ServerError,             # 500
     APIConnectionError,      # network/timeout
     SecretsDetectedError,    # raised by LangChain guard in block mode
+    PromptInjectionDetectedError,  # raised by guard when block_on_injection=True
 )
 ```
 
