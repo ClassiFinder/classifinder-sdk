@@ -7,13 +7,13 @@ from typing import Any
 import httpx
 
 from ._base import (
-    DEFAULT_BASE_URL,
     DEFAULT_MAX_RETRIES,
     DEFAULT_TIMEOUT,
     build_headers,
     is_retryable,
     raise_for_status,
     resolve_api_key,
+    resolve_base_url,
     sleep_for_retry,
 )
 from ._exceptions import APIConnectionError
@@ -32,7 +32,7 @@ class ClassiFinder:
     def __init__(
         self,
         api_key: str | None = None,
-        base_url: str = DEFAULT_BASE_URL,
+        base_url: str | None = None,
         max_retries: int = DEFAULT_MAX_RETRIES,
         timeout: float = DEFAULT_TIMEOUT,
         http2: bool = False,
@@ -40,6 +40,9 @@ class ClassiFinder:
     ) -> None:
         """Construct a synchronous ClassiFinder client.
 
+        base_url: API root. Defaults to the CLASSIFINDER_BASE_URL env var if set
+            (e.g. http://localhost:8000 for a self-hosted server), else
+            https://api.classifinder.ai. An explicit argument always wins.
         http2: enable HTTP/2 negotiation. Defaults to False to preserve the
             existing wire behavior for callers who don't opt in. Setting
             http2=True requires the [http2] extra (httpx pulls h2 from there).
@@ -48,7 +51,7 @@ class ClassiFinder:
             (e.g., from a CLI like cfsniff). Default leaves httpx's defaults.
         """
         self._api_key = resolve_api_key(api_key)
-        self._base_url = base_url.rstrip("/")
+        self._base_url = resolve_base_url(base_url)
         self._max_retries = max_retries
         self._client = httpx.Client(
             headers=build_headers(self._api_key),

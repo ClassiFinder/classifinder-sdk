@@ -213,11 +213,30 @@ See the full integration guide with three real-world projects per pattern: [clas
 ```python
 client = ClassiFinder(
     api_key="ss_live_...",           # or CLASSIFINDER_API_KEY env var
-    base_url="https://api.classifinder.ai",  # default
+    base_url="https://api.classifinder.ai",  # default, or CLASSIFINDER_BASE_URL env var
     max_retries=2,                   # retries on 429/500/timeout
     timeout=30.0,                    # seconds
 )
 ```
+
+### Self-hosted server
+
+Run the open-source scanner in your own network (see [classifinder.ai/self-host](https://classifinder.ai/self-host)) and point the SDK at it with `CLASSIFINDER_BASE_URL`. Every client, including `AsyncClassiFinder` and the LangChain `ClassiFinderGuard`, reads it when `base_url=` isn't passed, so tools built on the SDK (the [MCP server](https://pypi.org/project/classifinder-mcp/), [cfsniff](https://pypi.org/project/cfsniff/)) work with it too.
+
+```bash
+docker run -d -p 8000:8000 -e CLASSIFINDER_API_KEYS=change-me ghcr.io/classifinder/classifinder:latest
+export CLASSIFINDER_BASE_URL=http://localhost:8000
+export CLASSIFINDER_API_KEY=change-me
+```
+
+```python
+from classifinder import ClassiFinder
+
+client = ClassiFinder()  # → http://localhost:8000, text never leaves your network
+print(client.redact("AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE").redacted_text)
+```
+
+Resolution order: explicit `base_url=` → `CLASSIFINDER_BASE_URL` → `https://api.classifinder.ai`. Trailing slashes are stripped.
 
 Built-in retry with exponential backoff on rate limits (429), server errors (500), and timeouts.
 

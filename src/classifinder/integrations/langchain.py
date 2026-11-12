@@ -68,7 +68,7 @@ class ClassiFinderGuard(RunnableSerializable[str, str]):
     redaction_style: str = "label"
     types: list[str] = Field(default_factory=lambda: ["all"])
     min_confidence: float = 0.5
-    base_url: str = "https://api.classifinder.ai"
+    base_url: str | None = None  # None → CLASSIFINDER_BASE_URL env var, else hosted API
     max_retries: int = 2
     timeout: float = 30.0
     fail_open: bool = True

@@ -35,6 +35,45 @@ class TestClientConstruction:
         assert client._base_url == "https://custom.example.com"
         client.close()
 
+    def test_base_url_defaults_to_hosted(self):
+        client = ClassiFinder(api_key=TEST_API_KEY)
+        assert client._base_url == "https://api.classifinder.ai"
+        client.close()
+
+    def test_base_url_from_env(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000")
+        client = ClassiFinder(api_key=TEST_API_KEY)
+        assert client._base_url == "http://localhost:8000"
+        client.close()
+
+    def test_explicit_base_url_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000")
+        client = ClassiFinder(api_key=TEST_API_KEY, base_url="https://custom.example.com")
+        assert client._base_url == "https://custom.example.com"
+        client.close()
+
+    def test_empty_env_base_url_falls_back_to_default(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "")
+        client = ClassiFinder(api_key=TEST_API_KEY)
+        assert client._base_url == "https://api.classifinder.ai"
+        client.close()
+
+    def test_env_base_url_trailing_slash_stripped(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000/")
+        client = ClassiFinder(api_key=TEST_API_KEY)
+        assert client._base_url == "http://localhost:8000"
+        client.close()
+
+    @respx.mock
+    def test_env_base_url_used_for_requests(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000/")
+        route = respx.post("http://localhost:8000/v1/redact").mock(
+            return_value=httpx.Response(200, json=REDACT_RESPONSE_JSON)
+        )
+        with ClassiFinder(api_key=TEST_API_KEY) as client:
+            client.redact("Deploy key: sk_live_abc")
+        assert route.called
+
     def test_context_manager(self):
         with ClassiFinder(api_key=TEST_API_KEY) as client:
             assert client._api_key == TEST_API_KEY

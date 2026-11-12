@@ -1,5 +1,14 @@
 """Shared test fixtures and constants."""
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _isolate_base_url_env(monkeypatch):
+    """Keep a developer's CLASSIFINDER_BASE_URL from leaking into tests."""
+    monkeypatch.delenv("CLASSIFINDER_BASE_URL", raising=False)
+
+
 TEST_API_KEY = "ss_test_abc123def456ghi789jkl012mno345pqr678stu901vwx"
 TEST_BASE_URL = "https://api.classifinder.ai"
 
