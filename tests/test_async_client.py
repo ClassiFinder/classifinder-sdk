@@ -22,6 +22,33 @@ class TestAsyncConstruction:
         with pytest.raises(AuthenticationError, match="No API key"):
             AsyncClassiFinder()
 
+    async def test_base_url_from_env(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000/")
+        client = AsyncClassiFinder(api_key=TEST_API_KEY)
+        assert client._base_url == "http://localhost:8000"
+        await client.close()
+
+    async def test_explicit_base_url_overrides_env(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000")
+        client = AsyncClassiFinder(api_key=TEST_API_KEY, base_url="https://custom.example.com/")
+        assert client._base_url == "https://custom.example.com"
+        await client.close()
+
+    async def test_base_url_defaults_to_hosted(self):
+        client = AsyncClassiFinder(api_key=TEST_API_KEY)
+        assert client._base_url == "https://api.classifinder.ai"
+        await client.close()
+
+    @respx.mock
+    async def test_env_base_url_used_for_requests(self, monkeypatch):
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000")
+        route = respx.post("http://localhost:8000/v1/redact").mock(
+            return_value=httpx.Response(200, json=REDACT_RESPONSE_JSON)
+        )
+        async with AsyncClassiFinder(api_key=TEST_API_KEY) as client:
+            await client.redact("Deploy key: sk_live_abc")
+        assert route.called
+
     async def test_async_context_manager(self):
         async with AsyncClassiFinder(api_key=TEST_API_KEY) as client:
             assert client._api_key == TEST_API_KEY

@@ -119,6 +119,19 @@ REDACT_SECRET_AND_PI_JSON = {
 }
 
 
+class TestGuardBaseUrl:
+    @respx.mock
+    def test_guard_uses_env_base_url_when_unset(self, monkeypatch):
+        """A guard with no base_url must honor CLASSIFINDER_BASE_URL (self-host)."""
+        monkeypatch.setenv("CLASSIFINDER_BASE_URL", "http://localhost:8000")
+        route = respx.post("http://localhost:8000/v1/redact").mock(
+            return_value=httpx.Response(200, json=REDACT_RESPONSE_JSON)
+        )
+        guard = ClassiFinderGuard(api_key=TEST_API_KEY, mode="redact")
+        guard.invoke("Deploy key: sk_live_abc")
+        assert route.called
+
+
 class TestPromptInjectionGuard:
     @respx.mock
     def test_raises_on_phase1_marker(self):

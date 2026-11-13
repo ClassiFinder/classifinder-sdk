@@ -38,6 +38,17 @@ def resolve_api_key(api_key: str | None) -> str:
     return key
 
 
+def resolve_base_url(base_url: str | None) -> str:
+    """Resolve the API base URL from argument, CLASSIFINDER_BASE_URL env var, or default.
+
+    An explicit ``base_url`` argument always wins. Otherwise a non-empty
+    ``CLASSIFINDER_BASE_URL`` (e.g. ``http://localhost:8000`` for a self-hosted
+    server) is used, falling back to the hosted API. Trailing slashes are stripped.
+    """
+    url = base_url or os.environ.get("CLASSIFINDER_BASE_URL") or DEFAULT_BASE_URL
+    return url.rstrip("/")
+
+
 def build_headers(api_key: str) -> dict[str, str]:
     """Build default request headers."""
     return {
